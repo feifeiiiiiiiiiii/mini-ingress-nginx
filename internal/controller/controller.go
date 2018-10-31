@@ -25,9 +25,11 @@ type LoadBalancerController struct {
 	resync             time.Duration
 	ingressClass       string
 	ingressLister      utils.StoreToIngressLister
-	svcLister          cache.Store
+	svcController      cache.Controller
+	svcLister          utils.StoreToIngressLister
 	endpointLister     utils.StoreToEndpointLister
 	endpointController cache.Controller
+	stopChan           chan struct{}
 }
 
 // NewLoadBalancerControllerInput holds the input needed to call NewLoadBalancerController.
@@ -45,6 +47,7 @@ func NewLoadBalancerController(input NewLoadBalancerControllerInput) *LoadBalanc
 		resync:       input.ResyncPeriod,
 		client:       input.KubeClient,
 		ingressClass: input.IngressClass,
+		stopChan:     make(chan struct{}),
 	}
 	return &lbc
 }
@@ -81,7 +84,22 @@ func (lbc *LoadBalancerController) AddResourceHandler(resource string, handlers 
 	case "endpoints":
 		lbc.endpointLister.Store = store
 		lbc.endpointController = controller
+	case "services":
+		lbc.svcController = controller
+		lbc.svcLister.Store = store
 	default:
 		glog.Fatalf("unknown resource %v", resource)
 	}
+}
+
+// Run starts the loadbalancerController controller
+func (lbc *LoadBalancerController) Run() {
+	go lbc.svcController.Run(lbc.stopChan)
+	go lbc.endpointController.Run(lbc.stopChan)
+	go lbc.ingressController.Run(lbc.stopChan)
+}
+
+// Wait the loadbalancerController stop
+func (lbc *LoadBalancerController) Wait() {
+	<-lbc.stopChan
 }
