@@ -95,8 +95,8 @@ func (lbc *LoadBalancerController) AddResourceHandler(resource string, handlers 
 		lbc.endpointLister.Store = store
 		lbc.endpointController = controller
 	case "services":
-		lbc.svcController = controller
 		lbc.svcLister.Store = store
+		lbc.svcController = controller
 	default:
 		log.Fatalf("unknown resource %v", resource)
 	}
@@ -123,8 +123,6 @@ func (lbc *LoadBalancerController) sync(task queue.Task) {
 	case queue.Endpoints:
 		lbc.syncEndpoint(task)
 		return
-	case queue.Service:
-		lbc.syncExternalService(task)
 	}
 }
 
@@ -142,21 +140,30 @@ func (lbc *LoadBalancerController) syncIng(task queue.Task) {
 	}
 	if !ingExists {
 		log.Printf("Deleting Ingress: %v %v\n", key, ing)
-
-		// err := lbc.configurator.DeleteIngress(key)
-		// if err != nil {
-		// 	glog.Errorf("Error when deleting configuration for %v: %v", key, err)
-		// }
 	} else {
 		log.Printf("Adding or Updating Ingress: %v\n", key)
 	}
-	lbc.createIngress(ing)
+
+	_, err = lbc.createIngress(ing)
+	if err != nil {
+		return
+	}
 }
 
 func (lbc *LoadBalancerController) syncEndpoint(task queue.Task) {
-}
+	key := task.Key
+	obj, endpExists, err := lbc.endpointLister.GetByKey(key)
+	if err != nil {
+		lbc.syncQueue.Requeue(task, err)
+		return
+	}
 
-func (lbc *LoadBalancerController) syncExternalService(task queue.Task) {
+	if !endpExists {
+		return
+	}
+
+	fmt.Println(obj)
+
 }
 
 func (lbc *LoadBalancerController) createIngress(ing *extensions.Ingress) (*nginx.IngressEx, error) {

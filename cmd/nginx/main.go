@@ -23,6 +23,8 @@ var (
 
 func main() {
 	log.Println("Hello Mini Ingress Nginx")
+	flag.Parse()
+	flag.Lookup("logtostderr").Value.Set("true")
 
 	var kubeconfig *string
 	var err error
@@ -56,12 +58,12 @@ func main() {
 
 	// create handlers for resources we care about
 	ingressHandlers := handlers.CreateIngressHandlers(lbc)
-	serviceHandlers := handlers.CreateServiceHandlers(lbc)
 	endpointHandlers := handlers.CreateEndpointHandlers(lbc)
+	svcHandlers := handlers.CreateServiceHandlers(lbc)
 
 	lbc.AddResourceHandler("ingresses", ingressHandlers)
-	lbc.AddResourceHandler("services", serviceHandlers)
 	lbc.AddResourceHandler("endpoints", endpointHandlers)
+	lbc.AddResourceHandler("services", svcHandlers)
 
 	lbc.Run()
 	lbc.Wait()
