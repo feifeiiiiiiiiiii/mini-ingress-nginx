@@ -1,10 +1,10 @@
 package handlers
 
 import (
+	"log"
 	"reflect"
 
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/controller"
-	"github.com/golang/glog"
 	api_v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
@@ -14,27 +14,27 @@ func CreateEndpointHandlers(lbc *controller.LoadBalancerController) cache.Resour
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			endpoint := obj.(*api_v1.Endpoints)
-			glog.V(3).Infof("Adding endpoints: %v", endpoint.Name)
+			log.Printf("Adding endpoints: %v", endpoint.Name)
 		},
 		DeleteFunc: func(obj interface{}) {
 			endpoint, isEndpoint := obj.(*api_v1.Endpoints)
 			if !isEndpoint {
 				deletedState, ok := obj.(cache.DeletedFinalStateUnknown)
 				if !ok {
-					glog.V(3).Infof("Error received unexpected object: %v", obj)
+					log.Printf("Error received unexpected object: %v", obj)
 					return
 				}
 				endpoint, ok = deletedState.Obj.(*api_v1.Endpoints)
 				if !ok {
-					glog.V(3).Infof("Error DeletedFinalStateUnknown contained non-Endpoints object: %v", deletedState.Obj)
+					log.Printf("Error DeletedFinalStateUnknown contained non-Endpoints object: %v", deletedState.Obj)
 					return
 				}
 			}
-			glog.V(3).Infof("Removing endpoints: %v", endpoint.Name)
+			log.Printf("Removing endpoints: %v", endpoint.Name)
 		},
 		UpdateFunc: func(old, cur interface{}) {
 			if !reflect.DeepEqual(old, cur) {
-				glog.V(3).Infof("Endpoints %v changed, syncing", cur.(*api_v1.Endpoints).Name)
+				log.Printf("Endpoints %v changed, syncing", cur.(*api_v1.Endpoints).Name)
 			}
 		},
 	}

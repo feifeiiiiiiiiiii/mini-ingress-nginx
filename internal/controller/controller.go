@@ -1,10 +1,11 @@
 package controller
 
 import (
+	"log"
 	"time"
 
+	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/queue"
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/utils"
-	"github.com/golang/glog"
 	extensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/fields"
 
@@ -13,7 +14,7 @@ import (
 )
 
 const (
-	ingressClassKey = "kubernetes.io/mini.nginx.ingress.class"
+	ingressClassKey = "kubernetes.io/ingress.class"
 )
 
 // LoadBalancerController watches Kubernetes API and
@@ -30,6 +31,7 @@ type LoadBalancerController struct {
 	endpointLister     utils.StoreToEndpointLister
 	endpointController cache.Controller
 	stopChan           chan struct{}
+	syncQueue          *queue.TaskQueue
 }
 
 // NewLoadBalancerControllerInput holds the input needed to call NewLoadBalancerController.
@@ -49,6 +51,7 @@ func NewLoadBalancerController(input NewLoadBalancerControllerInput) *LoadBalanc
 		ingressClass: input.IngressClass,
 		stopChan:     make(chan struct{}),
 	}
+	lbc.syncQueue = queue.NewTaskQueue(lbc.sync)
 	return &lbc
 }
 
@@ -57,7 +60,7 @@ func (lbc *LoadBalancerController) GetIngressClassKey() string {
 	return ingressClassKey
 }
 
-// IsNginxIngress checks if resource ingress class annotation (if exists) is matching with ingress controller class
+// IsNginxIngress checks if resource ingress class annotation is matching with ingress controller class
 func (lbc *LoadBalancerController) IsNginxIngress(ing *extensions.Ingress) bool {
 	if class, exists := ing.Annotations[ingressClassKey]; exists {
 		return class == lbc.ingressClass || class == ""
@@ -88,7 +91,7 @@ func (lbc *LoadBalancerController) AddResourceHandler(resource string, handlers 
 		lbc.svcController = controller
 		lbc.svcLister.Store = store
 	default:
-		glog.Fatalf("unknown resource %v", resource)
+		log.Fatalf("unknown resource %v", resource)
 	}
 }
 
@@ -102,4 +105,13 @@ func (lbc *LoadBalancerController) Run() {
 // Wait the loadbalancerController stop
 func (lbc *LoadBalancerController) Wait() {
 	<-lbc.stopChan
+}
+
+func (lbc *LoadBalancerController) sync(task queue.Task) {
+	log.Printf("Syncing %v", task.Key)
+}
+
+// AddSyncQueue enqueues the provided item on the sync queue
+func (lbc *LoadBalancerController) AddSyncQueue(item interface{}) {
+	lbc.syncQueue.Enqueue(item)
 }

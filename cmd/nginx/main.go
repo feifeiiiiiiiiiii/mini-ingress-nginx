@@ -2,13 +2,14 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"log"
 	"path/filepath"
 	"time"
 
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/controller"
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/handlers"
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/nginx"
-	"github.com/golang/glog"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
@@ -21,10 +22,7 @@ var (
 )
 
 func main() {
-	flag.Parse()
-	flag.Lookup("logtostderr").Value.Set("true")
-
-	glog.Infof("Hello Mini Ingress Nginx")
+	log.Println("Hello Mini Ingress Nginx")
 
 	var kubeconfig *string
 	var err error
@@ -34,7 +32,6 @@ func main() {
 	} else {
 		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
 	}
-	flag.Parse()
 
 	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
 	if err != nil {
@@ -51,8 +48,8 @@ func main() {
 	lbcInput := controller.NewLoadBalancerControllerInput{
 		KubeClient:   kubeClient,
 		ResyncPeriod: 30 * time.Second,
-		Namespace:    "ingress-nginx",
-		IngressClass: "kubernetes.io/mini.nginx.ingress.class",
+		Namespace:    "ingress-mini-nginx",
+		IngressClass: "mini-ingress-nginx",
 	}
 
 	lbc := controller.NewLoadBalancerController(lbcInput)
@@ -69,5 +66,5 @@ func main() {
 	lbc.Run()
 	lbc.Wait()
 
-	glog.Infof("End Ingress Nginx")
+	fmt.Printf("End Ingress Nginx")
 }

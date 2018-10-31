@@ -1,11 +1,12 @@
 package handlers
 
 import (
+	"log"
+
 	extensions "k8s.io/api/extensions/v1beta1"
 
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/controller"
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/utils"
-	"github.com/golang/glog"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -15,29 +16,30 @@ func CreateIngressHandlers(lbc *controller.LoadBalancerController) cache.Resourc
 		AddFunc: func(obj interface{}) {
 			ingress := obj.(*extensions.Ingress)
 			if !lbc.IsNginxIngress(ingress) {
-				glog.Infof("Ignoring Ingress %v based on Annotation %v", ingress.Name, lbc.GetIngressClassKey())
+				log.Printf("Ignoring Ingress %v based on Annotation %v\n", ingress.Name, lbc.GetIngressClassKey())
 				return
 			}
-			glog.V(3).Infof("Adding Ingress: %v", ingress.Name)
+			log.Printf("Adding Ingress: %v", ingress.Name)
+			lbc.AddSyncQueue(obj)
 		},
 		DeleteFunc: func(obj interface{}) {
 			ingress, isIng := obj.(*extensions.Ingress)
 			if !isIng {
 				deletedState, ok := obj.(cache.DeletedFinalStateUnknown)
 				if !ok {
-					glog.V(3).Infof("Error received unexpected object: %v", obj)
+					log.Printf("Error received unexpected object: %v", obj)
 					return
 				}
 				ingress, ok = deletedState.Obj.(*extensions.Ingress)
 				if !ok {
-					glog.V(3).Infof("Error DeletedFinalStateUnknown contained non-Ingress object: %v", deletedState.Obj)
+					log.Printf("Error DeletedFinalStateUnknown contained non-Ingress object: %v", deletedState.Obj)
 					return
 				}
 			}
 			if !lbc.IsNginxIngress(ingress) {
 				return
 			}
-			glog.V(3).Infof("Removing Ingress: %v", ingress.Name)
+			log.Printf("Removing Ingress: %v", ingress.Name)
 		},
 		UpdateFunc: func(old, current interface{}) {
 			c := current.(*extensions.Ingress)
@@ -46,7 +48,7 @@ func CreateIngressHandlers(lbc *controller.LoadBalancerController) cache.Resourc
 				return
 			}
 			if utils.HasChanges(o, c) {
-				glog.V(3).Infof("Ingress %v changed, syncing", c.Name)
+				log.Printf("Ingress %v changed, syncing", c.Name)
 			}
 		},
 	}
