@@ -4,21 +4,32 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"path/filepath"
 	"time"
 
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/controller"
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/handlers"
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/nginx"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 var (
-	proxyURL = flag.String("proxy", "",
+	proxyURL = flag.String("proxy", "127.0.0.1:8001",
 		`Use a proxy server to connect to Kubernetes API started by "kubectl proxy" command. For testing purposes only.
 	The Ingress controller does not start NGINX and does not write any generated NGINX configuration files to disk`)
+
+	namespace = flag.String("namespace", "ingress-mini-nginx", "ingress namespace")
+
+	ingressClass = flag.String("ingressClass", "mini-ingress-nginx", "ingress class")
+
+	mainTemplatePath = flag.String("main-template-path", "",
+		`Path to the main NGINX configuration template. (default for NGINX "nginx.tmpl"; default for NGINX Plus "nginx-plus.tmpl")`)
+
+	ingressTemplatePath = flag.String("ingress-template-path", "",
+		`Path to the ingress NGINX configuration template for an ingress resource.
+	(default for NGINX "nginx.ingress.tmpl"; default for NGINX Plus "nginx-plus.ingress.tmpl")`)
 )
 
 func main() {
@@ -26,29 +37,43 @@ func main() {
 	flag.Parse()
 	flag.Lookup("logtostderr").Value.Set("true")
 
-	var kubeconfig *string
+	var config *rest.Config
 	var err error
 
-	if home := homedir.HomeDir(); home != "" {
-		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+	if *proxyURL != "" {
+		config, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+			&clientcmd.ClientConfigLoadingRules{},
+			&clientcmd.ConfigOverrides{
+				ClusterInfo: clientcmdapi.Cluster{
+					Server: *proxyURL,
+				},
+			}).ClientConfig()
+		if err != nil {
+			log.Fatalf("error creating client configuration: %v", err)
+		}
 	} else {
-		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+		if config, err = rest.InClusterConfig(); err != nil {
+			log.Fatalf("error creating client configuration: %v", err)
+		}
 	}
 
-	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
-	if err != nil {
-		panic(err)
-	}
 	kubeClient, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		panic(err)
+		log.Fatalf("Failed to create client: %v.", err)
+	}
+
+	nginxConfTemplatePath := "nginx.tmpl"
+	nginxIngressTemplatePath := "nginx.ingress.tmpl"
+
+	if *mainTemplatePath != "" {
+		nginxConfTemplatePath = *mainTemplatePath
+	}
+	if *ingressTemplatePath != "" {
+		nginxIngressTemplatePath = *ingressTemplatePath
 	}
 
 	nginxBinaryPath := "/usr/sbin/nginx"
-	ngxc := nginx.NewNginxController("/Users/qinpengfei/workspace/ingress-nginx", nginxBinaryPath, false)
-
-	nginxConfTemplatePath := "/Users/qinpengfei/workspace/github/nsqbuild/src/github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/nginx/templates/nginx.tmpl"
-	nginxIngressTemplatePath := "/Users/qinpengfei/workspace/github/nsqbuild/src/github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/nginx/templates/nginx.ingress.tmpl"
+	ngxc := nginx.NewNginxController("/etc/nginx/", nginxBinaryPath, false)
 
 	templateExecutor, err := nginx.NewTemplateExecutor(nginxConfTemplatePath, nginxIngressTemplatePath)
 	if err != nil {
@@ -61,8 +86,8 @@ func main() {
 		KubeClient:        kubeClient,
 		ResyncPeriod:      30 * time.Second,
 		NginxConfigurator: cnf,
-		Namespace:         "ingress-mini-nginx",
-		IngressClass:      "mini-ingress-nginx",
+		Namespace:         *namespace,
+		IngressClass:      *ingressClass,
 	}
 
 	lbc := controller.NewLoadBalancerController(lbcInput)
