@@ -167,16 +167,16 @@ func (lbc *LoadBalancerController) syncIng(task queue.Task) {
 
 		err = lbc.configurator.AddOrUpdateIngress(ingEx)
 		if err != nil {
-			fmt.Printf("AddedOrUpdatedWithError Configuration for %v was added or updated, but not applied: %v\n", key, err)
+			log.Printf("AddedOrUpdatedWithError Configuration for %v was added or updated, but not applied: %v\n", key, err)
 		} else {
-			fmt.Printf("AddedOrUpdated Configuration for %v was added or updated\n", key)
+			log.Printf("AddedOrUpdated Configuration for %v was added or updated\n", key)
 		}
 	}
 }
 
 func (lbc *LoadBalancerController) syncEndpoint(task queue.Task) {
 	key := task.Key
-	obj, endpExists, err := lbc.endpointLister.GetByKey(key)
+	_, endpExists, err := lbc.endpointLister.GetByKey(key)
 	if err != nil {
 		lbc.syncQueue.Requeue(task, err)
 		return
@@ -186,8 +186,6 @@ func (lbc *LoadBalancerController) syncEndpoint(task queue.Task) {
 		return
 	}
 
-	fmt.Println(obj)
-
 }
 
 func (lbc *LoadBalancerController) createIngress(ing *extensions.Ingress) (*nginx.IngressEx, error) {
@@ -196,8 +194,6 @@ func (lbc *LoadBalancerController) createIngress(ing *extensions.Ingress) (*ngin
 		Endpoints:    make(map[string][]string),
 		HealthChecks: make(map[string]*api_v1.Probe),
 	}
-
-	fmt.Println("qqqqqqqqq ", ing)
 
 	/**
 	 * spec:
@@ -229,7 +225,7 @@ func (lbc *LoadBalancerController) createIngress(ing *extensions.Ingress) (*ngin
 		for _, path := range rule.HTTP.Paths {
 			endps, err := lbc.getEndpointsForIngressBackend(&path.Backend, ing.Namespace)
 			if err != nil {
-				fmt.Printf("Error retrieving endpoints for the service %v: %v\n", path.Backend.ServiceName, err)
+				log.Printf("Error retrieving endpoints for the service %v: %v\n", path.Backend.ServiceName, err)
 				ingEx.Endpoints[path.Backend.ServiceName+path.Backend.ServicePort.String()] = []string{}
 			} else {
 				ingEx.Endpoints[path.Backend.ServiceName+path.Backend.ServicePort.String()] = endps
