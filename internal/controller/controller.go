@@ -8,7 +8,6 @@ import (
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/nginx"
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/queue"
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/utils"
-	"github.com/golang/glog"
 
 	api_v1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
@@ -158,20 +157,20 @@ func (lbc *LoadBalancerController) syncIng(task queue.Task) {
 	}
 	if !ingExists {
 		log.Printf("Deleting Ingress: %v %v\n", key, ing)
+		lbc.configurator.DeleteIngress(key)
 	} else {
 		log.Printf("Adding or Updating Ingress: %v\n", key)
-	}
+		ingEx, err := lbc.createIngress(ing)
+		if err != nil {
+			return
+		}
 
-	ingEx, err := lbc.createIngress(ing)
-	if err != nil {
-		return
-	}
-
-	err = lbc.configurator.AddOrUpdateIngress(ingEx)
-	if err != nil {
-		fmt.Printf("AddedOrUpdatedWithError Configuration for %v was added or updated, but not applied: %v\n", key, err)
-	} else {
-		fmt.Printf("AddedOrUpdated Configuration for %v was added or updated\n", key)
+		err = lbc.configurator.AddOrUpdateIngress(ingEx)
+		if err != nil {
+			fmt.Printf("AddedOrUpdatedWithError Configuration for %v was added or updated, but not applied: %v\n", key, err)
+		} else {
+			fmt.Printf("AddedOrUpdated Configuration for %v was added or updated\n", key)
+		}
 	}
 }
 
@@ -197,6 +196,8 @@ func (lbc *LoadBalancerController) createIngress(ing *extensions.Ingress) (*ngin
 		Endpoints:    make(map[string][]string),
 		HealthChecks: make(map[string]*api_v1.Probe),
 	}
+
+	fmt.Println("qqqqqqqqq ", ing)
 
 	/**
 	 * spec:
@@ -246,19 +247,19 @@ func (lbc *LoadBalancerController) createIngress(ing *extensions.Ingress) (*ngin
 func (lbc *LoadBalancerController) getEndpointsForIngressBackend(backend *extensions.IngressBackend, namespace string) ([]string, error) {
 	svc, err := lbc.getServiceForIngressBackend(backend, namespace)
 	if err != nil {
-		glog.V(3).Infof("Error getting service %v: %v", backend.ServiceName, err)
+		log.Printf("Error getting service %v: %v\n", backend.ServiceName, err)
 		return nil, err
 	}
 
 	endps, err := lbc.endpointLister.GetServiceEndpoints(svc)
 	if err != nil {
-		glog.V(3).Infof("Error getting endpoints for service %s from the cache: %v", svc.Name, err)
+		log.Printf("Error getting endpoints for service %s from the cache: %v", svc.Name, err)
 		return nil, err
 	}
 
 	result, err := lbc.getEndpointsForPort(endps, backend.ServicePort, svc)
 	if err != nil {
-		glog.V(3).Infof("Error getting endpoints for service %s port %v: %v", svc.Name, backend.ServicePort, err)
+		log.Printf("Error getting endpoints for service %s port %v: %v", svc.Name, backend.ServicePort, err)
 		return nil, err
 	}
 	return result, nil

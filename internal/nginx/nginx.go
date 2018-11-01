@@ -143,3 +143,16 @@ func (nginx *Controller) UpdateIngressConfigFile(name string, cfg []byte) {
 	}
 	glog.V(3).Infof("The Ingress config file has been updated")
 }
+
+// DeleteIngress deletes the configuration file, which corresponds for the
+// specified ingress from NGINX conf directory
+func (nginx *Controller) DeleteIngress(name string) {
+	filename := nginx.getIngressNginxConfigFileName(name)
+	glog.V(3).Infof("deleting %v", filename)
+
+	if !nginx.local {
+		if err := os.Remove(filename); err != nil {
+			glog.Warningf("Failed to delete %v: %v", filename, err)
+		}
+	}
+}

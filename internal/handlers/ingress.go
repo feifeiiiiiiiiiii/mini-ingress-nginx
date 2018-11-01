@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"log"
+	"reflect"
 
+	api_v1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/controller"
-	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/utils"
+	"github.com/golang/glog"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -40,15 +42,12 @@ func CreateIngressHandlers(lbc *controller.LoadBalancerController) cache.Resourc
 				return
 			}
 			log.Printf("Removing Ingress: %v", ingress.Name)
+			lbc.AddSyncQueue(obj)
 		},
-		UpdateFunc: func(old, current interface{}) {
-			c := current.(*extensions.Ingress)
-			o := old.(*extensions.Ingress)
-			if !lbc.IsNginxIngress(c) {
-				return
-			}
-			if utils.HasChanges(o, c) {
-				log.Printf("Ingress %v changed, syncing", c.Name)
+		UpdateFunc: func(old, cur interface{}) {
+			if !reflect.DeepEqual(old, cur) {
+				glog.V(3).Infof("Endpoints %v changed, syncing", cur.(*api_v1.Endpoints).Name)
+				lbc.AddSyncQueue(cur)
 			}
 		},
 	}

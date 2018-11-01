@@ -134,6 +134,14 @@ func (cnf *NgxConfig) createUpstream(ingEx *IngressEx, name string, backend *ext
 	return ups
 }
 
+// DeleteIngress deletes NGINX configuration for the Ingress resource
+func (cnf *NgxConfig) DeleteIngress(key string) error {
+	name := strings.Replace(key, "/", "-", -1)
+	cnf.nginx.DeleteIngress(name)
+	delete(cnf.ingresses, name)
+	return nil
+}
+
 func createLocation(path string, upstream Upstream) Location {
 	loc := Location{
 		Path:     path,
