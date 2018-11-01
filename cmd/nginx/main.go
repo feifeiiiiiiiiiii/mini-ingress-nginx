@@ -45,13 +45,24 @@ func main() {
 	}
 
 	nginxBinaryPath := "/usr/sbin/nginx"
-	nginx.NewNginxController("/etc/nginx/", nginxBinaryPath, false)
+	ngxc := nginx.NewNginxController("/etc/nginx/", nginxBinaryPath, false)
+
+	nginxConfTemplatePath := "nginx.tmpl"
+	nginxIngressTemplatePath := "nginx.ingress.tmpl"
+
+	templateExecutor, err := nginx.NewTemplateExecutor(nginxConfTemplatePath, nginxIngressTemplatePath)
+	if err != nil {
+		log.Fatalf("Error creating TemplateExecutor: %v", err)
+	}
+
+	cnf := nginx.NewNgxConfig(ngxc, templateExecutor)
 
 	lbcInput := controller.NewLoadBalancerControllerInput{
-		KubeClient:   kubeClient,
-		ResyncPeriod: 30 * time.Second,
-		Namespace:    "ingress-mini-nginx",
-		IngressClass: "mini-ingress-nginx",
+		KubeClient:        kubeClient,
+		ResyncPeriod:      30 * time.Second,
+		NginxConfigurator: cnf,
+		Namespace:         "ingress-mini-nginx",
+		IngressClass:      "mini-ingress-nginx",
 	}
 
 	lbc := controller.NewLoadBalancerController(lbcInput)

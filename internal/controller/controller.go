@@ -39,14 +39,16 @@ type LoadBalancerController struct {
 	endpointController cache.Controller
 	stopChan           chan struct{}
 	syncQueue          *queue.TaskQueue
+	configurator       *nginx.NgxConfig
 }
 
 // NewLoadBalancerControllerInput holds the input needed to call NewLoadBalancerController.
 type NewLoadBalancerControllerInput struct {
-	KubeClient   kubernetes.Interface
-	ResyncPeriod time.Duration
-	Namespace    string
-	IngressClass string
+	KubeClient        kubernetes.Interface
+	ResyncPeriod      time.Duration
+	NginxConfigurator *nginx.NgxConfig
+	Namespace         string
+	IngressClass      string
 }
 
 // NewLoadBalancerController creates a controller
@@ -57,6 +59,7 @@ func NewLoadBalancerController(input NewLoadBalancerControllerInput) *LoadBalanc
 		client:       input.KubeClient,
 		ingressClass: input.IngressClass,
 		stopChan:     make(chan struct{}),
+		configurator: input.NginxConfigurator,
 	}
 	lbc.syncQueue = queue.NewTaskQueue(lbc.sync)
 	return &lbc
@@ -144,9 +147,16 @@ func (lbc *LoadBalancerController) syncIng(task queue.Task) {
 		log.Printf("Adding or Updating Ingress: %v\n", key)
 	}
 
-	_, err = lbc.createIngress(ing)
+	ingEx, err := lbc.createIngress(ing)
 	if err != nil {
 		return
+	}
+
+	err = lbc.configurator.AddOrUpdateIngress(ingEx)
+	if err != nil {
+		fmt.Printf("AddedOrUpdatedWithError Configuration for %v was added or updated, but not applied: %v\n", key, err)
+	} else {
+		fmt.Printf("AddedOrUpdated Configuration for %v was added or updated\n", key)
 	}
 }
 
