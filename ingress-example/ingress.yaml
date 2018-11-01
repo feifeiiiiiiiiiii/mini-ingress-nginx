@@ -7,14 +7,14 @@ metadata:
     kubernetes.io/ingress.class: mini-ingress-nginx
 spec:
   rules:
-  - host: foo.bar.com
+  - host: nsq.test.jd.com
     http:
       paths:
-      - path: /foo
+      - path: /nsq1
         backend:
-          serviceName: s1
-          servicePort: 80
-      - path: /bar
+          serviceName: nsq
+          servicePort: 4151
+      - path: /nsq2
         backend:
-          serviceName: s2
-          servicePort: 80
+          serviceName: nsq
+          servicePort: 4151

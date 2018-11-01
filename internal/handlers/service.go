@@ -9,10 +9,8 @@ import (
 func CreateServiceHandlers(lbc *controller.LoadBalancerController) cache.ResourceEventHandlerFuncs {
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-
 		},
 		DeleteFunc: func(obj interface{}) {
-
 		},
 		UpdateFunc: func(old, cur interface{}) {
 

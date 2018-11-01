@@ -34,7 +34,7 @@ type LoadBalancerController struct {
 	ingressClass       string
 	ingressLister      utils.StoreToIngressLister
 	svcController      cache.Controller
-	svcLister          utils.StoreToIngressLister
+	svcLister          cache.Store
 	endpointLister     utils.StoreToEndpointLister
 	endpointController cache.Controller
 	stopChan           chan struct{}
@@ -78,31 +78,46 @@ func (lbc *LoadBalancerController) IsNginxIngress(ing *extensions.Ingress) bool 
 	return false
 }
 
-// AddResourceHandler adds the handlers for ingress\services
-func (lbc *LoadBalancerController) AddResourceHandler(resource string, handlers cache.ResourceEventHandlerFuncs) {
-	store, controller := cache.NewInformer(
+// AddServiceHandler adds the handler for services to the controller
+func (lbc *LoadBalancerController) AddServiceHandler(handlers cache.ResourceEventHandlerFuncs) {
+	lbc.svcLister, lbc.svcController = cache.NewInformer(
+		cache.NewListWatchFromClient(
+			lbc.client.Core().RESTClient(),
+			"services",
+			lbc.namespace,
+			fields.Everything()),
+		&api_v1.Service{},
+		lbc.resync,
+		handlers,
+	)
+}
+
+// AddIngressHandler adds the handler for ingresses to the controller
+func (lbc *LoadBalancerController) AddIngressHandler(handlers cache.ResourceEventHandlerFuncs) {
+	lbc.ingressLister.Store, lbc.ingressController = cache.NewInformer(
 		cache.NewListWatchFromClient(
 			lbc.client.Extensions().RESTClient(),
-			resource,
+			"ingresses",
 			lbc.namespace,
 			fields.Everything()),
 		&extensions.Ingress{},
 		lbc.resync,
 		handlers,
 	)
-	switch resource {
-	case "ingresses":
-		lbc.ingressLister.Store = store
-		lbc.ingressController = controller
-	case "endpoints":
-		lbc.endpointLister.Store = store
-		lbc.endpointController = controller
-	case "services":
-		lbc.svcLister.Store = store
-		lbc.svcController = controller
-	default:
-		log.Fatalf("unknown resource %v", resource)
-	}
+}
+
+// AddEndpointHandler adds the handler for endpoints to the controller
+func (lbc *LoadBalancerController) AddEndpointHandler(handlers cache.ResourceEventHandlerFuncs) {
+	lbc.endpointLister.Store, lbc.endpointController = cache.NewInformer(
+		cache.NewListWatchFromClient(
+			lbc.client.Core().RESTClient(),
+			"endpoints",
+			lbc.namespace,
+			fields.Everything()),
+		&api_v1.Endpoints{},
+		lbc.resync,
+		handlers,
+	)
 }
 
 // Run starts the loadbalancerController controller

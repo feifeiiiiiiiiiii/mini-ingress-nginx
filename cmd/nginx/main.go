@@ -45,10 +45,10 @@ func main() {
 	}
 
 	nginxBinaryPath := "/usr/sbin/nginx"
-	ngxc := nginx.NewNginxController("/etc/nginx/", nginxBinaryPath, false)
+	ngxc := nginx.NewNginxController("/Users/qinpengfei/workspace/ingress-nginx", nginxBinaryPath, false)
 
-	nginxConfTemplatePath := "nginx.tmpl"
-	nginxIngressTemplatePath := "nginx.ingress.tmpl"
+	nginxConfTemplatePath := "/Users/qinpengfei/workspace/github/nsqbuild/src/github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/nginx/templates/nginx.tmpl"
+	nginxIngressTemplatePath := "/Users/qinpengfei/workspace/github/nsqbuild/src/github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/nginx/templates/nginx.ingress.tmpl"
 
 	templateExecutor, err := nginx.NewTemplateExecutor(nginxConfTemplatePath, nginxIngressTemplatePath)
 	if err != nil {
@@ -72,9 +72,9 @@ func main() {
 	endpointHandlers := handlers.CreateEndpointHandlers(lbc)
 	svcHandlers := handlers.CreateServiceHandlers(lbc)
 
-	lbc.AddResourceHandler("ingresses", ingressHandlers)
-	lbc.AddResourceHandler("endpoints", endpointHandlers)
-	lbc.AddResourceHandler("services", svcHandlers)
+	lbc.AddIngressHandler(ingressHandlers)
+	lbc.AddEndpointHandler(endpointHandlers)
+	lbc.AddServiceHandler(svcHandlers)
 
 	lbc.Run()
 	lbc.Wait()
