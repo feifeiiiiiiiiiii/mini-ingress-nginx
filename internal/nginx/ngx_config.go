@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/golang/glog"
 	extensions "k8s.io/api/extensions/v1beta1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -52,6 +53,7 @@ func getNameForUpstream(ing *extensions.Ingress, host string, backend *extension
 
 func (cnf *NgxConfig) generateNginxCfg(ingEx *IngressEx) IngressNginxConfig {
 	upstreams := make(map[string]Upstream)
+	rewrites := getRewrites(ingEx)
 
 	if ingEx.Ingress.Spec.Backend != nil {
 		name := getNameForUpstream(ingEx.Ingress, "", ingEx.Ingress.Spec.Backend)
@@ -86,7 +88,7 @@ func (cnf *NgxConfig) generateNginxCfg(ingEx *IngressEx) IngressNginxConfig {
 				upstreams[upsName] = upstream
 			}
 
-			loc := createLocation(pathOrDefault(path.Path), upstreams[upsName])
+			loc := createLocation(pathOrDefault(path.Path), upstreams[upsName], rewrites[path.Backend.ServiceName])
 
 			locations = append(locations, loc)
 
@@ -98,7 +100,7 @@ func (cnf *NgxConfig) generateNginxCfg(ingEx *IngressEx) IngressNginxConfig {
 		if rootLocation == false && ingEx.Ingress.Spec.Backend != nil {
 			upsName := getNameForUpstream(ingEx.Ingress, "", ingEx.Ingress.Spec.Backend)
 
-			loc := createLocation(pathOrDefault("/"), upstreams[upsName])
+			loc := createLocation(pathOrDefault("/"), upstreams[upsName], rewrites[ingEx.Ingress.Spec.Backend.ServiceName])
 			locations = append(locations, loc)
 		}
 
@@ -145,10 +147,11 @@ func (cnf *NgxConfig) DeleteIngress(key string) error {
 	return nil
 }
 
-func createLocation(path string, upstream Upstream) Location {
+func createLocation(path string, upstream Upstream, rewrite string) Location {
 	loc := Location{
 		Path:     path,
 		Upstream: upstream,
+		Rewrite:  rewrite,
 	}
 
 	return loc
@@ -186,4 +189,40 @@ func (cnf *NgxConfig) HasIngress(ing *extensions.Ingress) bool {
 	name := objectMetaToFileName(&ing.ObjectMeta)
 	_, exists := cnf.ingresses[name]
 	return exists
+}
+
+func getRewrites(ingEx *IngressEx) map[string]string {
+	rewrites := make(map[string]string)
+
+	if services, exists := ingEx.Ingress.Annotations["nginx.org/rewrites"]; exists {
+		for _, svc := range strings.Split(services, ";") {
+			if serviceName, rewrite, err := parseRewrites(svc); err != nil {
+				glog.Errorf("In %v nginx.org/rewrites contains invalid declaration: %v, ignoring", ingEx.Ingress.Name, err)
+			} else {
+				rewrites[serviceName] = rewrite
+			}
+		}
+	}
+
+	return rewrites
+}
+
+func parseRewrites(service string) (serviceName string, rewrite string, err error) {
+	parts := strings.SplitN(strings.TrimSpace(service), " ", 2)
+
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("Invalid rewrite format: %s", service)
+	}
+
+	svcNameParts := strings.Split(parts[0], "=")
+	if len(svcNameParts) != 2 {
+		return "", "", fmt.Errorf("Invalid rewrite format: %s", svcNameParts)
+	}
+
+	rwPathParts := strings.Split(parts[1], "=")
+	if len(rwPathParts) != 2 {
+		return "", "", fmt.Errorf("Invalid rewrite format: %s", rwPathParts)
+	}
+
+	return svcNameParts[1], rwPathParts[1], nil
 }

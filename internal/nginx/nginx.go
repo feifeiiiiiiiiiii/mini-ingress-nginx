@@ -28,6 +28,7 @@ type MainConfig struct {
 type Location struct {
 	Path     string
 	Upstream Upstream
+	Rewrite  string
 }
 
 // Server describes an NGINX server
