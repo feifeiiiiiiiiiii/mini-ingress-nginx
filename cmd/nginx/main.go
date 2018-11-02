@@ -89,6 +89,9 @@ func main() {
 
 	cnf := nginx.NewNgxConfig(ngxc, templateExecutor)
 
+	nginxDone := make(chan error, 1)
+	ngxc.Start(nginxDone)
+
 	lbcInput := controller.NewLoadBalancerControllerInput{
 		KubeClient:        kubeClient,
 		ResyncPeriod:      30 * time.Second,

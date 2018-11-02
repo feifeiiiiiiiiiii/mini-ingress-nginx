@@ -36,6 +36,9 @@ func (cnf *NgxConfig) AddOrUpdateIngress(ingEx *IngressEx) error {
 	}
 	cnf.nginx.UpdateIngressConfigFile(name, content)
 	cnf.ingresses[name] = ingEx
+	if err := cnf.nginx.Reload(); err != nil {
+		return fmt.Errorf("Error reloading NGINX for %v/%v: %v", ingEx.Ingress.Namespace, ingEx.Ingress.Name, err)
+	}
 	return nil
 }
 

@@ -1,8 +1,11 @@
 package nginx
 
 import (
+	"bytes"
+	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path"
 
 	"github.com/golang/glog"
@@ -100,8 +103,41 @@ func NewNginxController(nginxConfPath string, nginxBinaryPath string, local bool
 	return &ngxc
 }
 
+func (nginx *Controller) getNginxCommand(cmd string) string {
+	return fmt.Sprint(nginx.nginxBinaryPath, " -s ", cmd)
+}
+
+func shellOut(cmd string) (err error) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	glog.V(3).Infof("executing %s", cmd)
+
+	command := exec.Command("sh", "-c", cmd)
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+
+	err = command.Start()
+	if err != nil {
+		return fmt.Errorf("Failed to execute %v, err: %v", cmd, err)
+	}
+
+	err = command.Wait()
+	if err != nil {
+		return fmt.Errorf("Command %v stdout: %q\nstderr: %q\nfinished with error: %v", cmd,
+			stdout.String(), stderr.String(), err)
+	}
+	return nil
+}
+
 // Reload nginx
 func (nginx *Controller) Reload() error {
+	log.Printf("Reloading nginx. configVersion")
+
+	reloadCmd := nginx.getNginxCommand("reload")
+	if err := shellOut(reloadCmd); err != nil {
+		return fmt.Errorf("nginx reload failed: %v", err)
+	}
 	return nil
 }
 
@@ -177,4 +213,21 @@ func (nginx *Controller) UpdateMainConfigFile(cfg []byte) {
 	}
 	defer w.Close()
 	log.Printf("The main NGINX config file has been updated")
+}
+
+// Start starts NGINX
+func (nginx *Controller) Start(done chan error) {
+	log.Printf("Starting nginx")
+
+	cmd := exec.Command(nginx.nginxBinaryPath)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		glog.Fatalf("Failed to start nginx: %v", err)
+	}
+
+	go func() {
+		done <- cmd.Wait()
+	}()
+
 }
