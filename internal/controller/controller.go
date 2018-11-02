@@ -126,6 +126,7 @@ func (lbc *LoadBalancerController) Run() {
 	go lbc.endpointController.Run(lbc.stopChan)
 	go lbc.ingressController.Run(lbc.stopChan)
 	go lbc.syncQueue.Run(time.Second, lbc.stopChan)
+	lbc.Wait()
 }
 
 // Wait the loadbalancerController stop

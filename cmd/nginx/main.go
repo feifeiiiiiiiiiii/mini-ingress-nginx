@@ -117,7 +117,6 @@ func main() {
 	go handleTermination(lbc, ngxc, nginxDone)
 
 	lbc.Run()
-	lbc.Wait()
 
 	fmt.Printf("End Ingress Nginx")
 }
