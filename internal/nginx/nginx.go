@@ -231,3 +231,11 @@ func (nginx *Controller) Start(done chan error) {
 	}()
 
 }
+
+// Quit shutdowns NGINX gracefully
+func (nginx *Controller) Quit() {
+	quitCmd := nginx.getNginxCommand("quit")
+	if err := shellOut(quitCmd); err != nil {
+		log.Fatalf("Failed to quit nginx: %v", err)
+	}
+}

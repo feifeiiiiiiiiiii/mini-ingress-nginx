@@ -8,6 +8,7 @@ import (
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/nginx"
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/queue"
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/utils"
+	"github.com/golang/glog"
 
 	api_v1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
@@ -337,4 +338,31 @@ func (lbc *LoadBalancerController) getTargetPort(svcPort *api_v1.ServicePort, sv
 	}
 
 	return portNum, nil
+}
+
+// Stop shutdowns the load balancer controller
+func (lbc *LoadBalancerController) Stop() {
+	close(lbc.stopChan)
+
+	lbc.syncQueue.Shutdown()
+}
+
+func (lbc *LoadBalancerController) getIngressesForService(svc *api_v1.Service) []extensions.Ingress {
+	ings, err := lbc.ingressLister.GetServiceIngress(svc)
+	if err != nil {
+		glog.V(3).Infof("ignoring service %v: %v", svc.Name, err)
+		return nil
+	}
+	return ings
+}
+
+// EnqueueIngressForService enqueues the ingress for the given service
+func (lbc *LoadBalancerController) EnqueueIngressForService(svc *api_v1.Service) {
+	ings := lbc.getIngressesForService(svc)
+	for _, ing := range ings {
+		if !lbc.configurator.HasIngress(&ing) {
+			continue
+		}
+		lbc.syncQueue.Enqueue(&ing)
+	}
 }

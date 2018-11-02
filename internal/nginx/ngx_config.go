@@ -180,3 +180,10 @@ func upstreamMapToSlice(upstreams map[string]Upstream) []Upstream {
 
 	return result
 }
+
+// HasIngress checks if the Ingress resource is present in NGINX configuration
+func (cnf *NgxConfig) HasIngress(ing *extensions.Ingress) bool {
+	name := objectMetaToFileName(&ing.ObjectMeta)
+	_, exists := cnf.ingresses[name]
+	return exists
+}

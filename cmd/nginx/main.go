@@ -4,6 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/controller"
@@ -21,7 +24,7 @@ var (
 		`Use a proxy server to connect to Kubernetes API started by "kubectl proxy" command. For testing purposes only.
 	The Ingress controller does not start NGINX and does not write any generated NGINX configuration files to disk`)
 
-	namespace = flag.String("namespace", "ingress-mini-nginx", "ingress namespace")
+	namespace = flag.String("namespace", "mini-nginx-ingress", "ingress namespace")
 
 	ingressClass = flag.String("ingressClass", "mini-ingress-nginx", "ingress class")
 
@@ -111,8 +114,43 @@ func main() {
 	lbc.AddEndpointHandler(endpointHandlers)
 	lbc.AddServiceHandler(svcHandlers)
 
+	go handleTermination(lbc, ngxc, nginxDone)
+
 	lbc.Run()
 	lbc.Wait()
 
 	fmt.Printf("End Ingress Nginx")
+}
+
+func handleTermination(lbc *controller.LoadBalancerController, ngxc *nginx.Controller, nginxDone chan error) {
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGTERM)
+
+	exitStatus := 0
+	exited := false
+
+	select {
+	case err := <-nginxDone:
+		if err != nil {
+			log.Printf("nginx command exited with an error: %v", err)
+			exitStatus = 1
+		} else {
+			log.Printf("nginx command exited successfully")
+		}
+		exited = true
+	case <-signalChan:
+		log.Printf("Received SIGTERM, shutting down")
+	}
+
+	glog.Infof("Shutting down the controller")
+	lbc.Stop()
+
+	if !exited {
+		glog.Infof("Shutting down NGINX")
+		ngxc.Quit()
+		<-nginxDone
+	}
+
+	glog.Infof("Exiting with a status: %v", exitStatus)
+	os.Exit(exitStatus)
 }
