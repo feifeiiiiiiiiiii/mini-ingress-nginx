@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mini-nginx-ingress
+  labels:
+    role: mini-nginx-ingress-system
+    access: mini-nginx-ingress-system

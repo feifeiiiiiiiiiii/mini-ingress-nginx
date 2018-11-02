@@ -1,7 +1,7 @@
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
-  name: test-ingress
+  name: nsq-ingress
   namespace: mini-nginx-ingress
   annotations:
     kubernetes.io/ingress.class: mini-ingress-nginx
