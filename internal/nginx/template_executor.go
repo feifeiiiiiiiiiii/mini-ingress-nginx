@@ -48,3 +48,12 @@ func (te *TemplateExecutor) ExecuteIngressConfigTemplate(cfg *IngressNginxConfig
 
 	return configBuffer.Bytes(), err
 }
+
+// ExecuteMainConfigTemplate generates the content of the main NGINX configuration file
+func (te *TemplateExecutor) ExecuteMainConfigTemplate() ([]byte, error) {
+	cfg := &MainConfig{}
+	var configBuffer bytes.Buffer
+	err := te.mainTemplate.Execute(&configBuffer, cfg)
+
+	return configBuffer.Bytes(), err
+}

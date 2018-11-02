@@ -9,6 +9,7 @@ import (
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/controller"
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/handlers"
 	"github.com/feifeiiiiiiiiiii/mini-ingress-nginx/internal/nginx"
+	"github.com/golang/glog"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -79,6 +80,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error creating TemplateExecutor: %v", err)
 	}
+
+	content, err := templateExecutor.ExecuteMainConfigTemplate()
+	if err != nil {
+		glog.Fatalf("Error generating NGINX main config: %v", err)
+	}
+	ngxc.UpdateMainConfigFile(content)
 
 	cnf := nginx.NewNgxConfig(ngxc, templateExecutor)
 

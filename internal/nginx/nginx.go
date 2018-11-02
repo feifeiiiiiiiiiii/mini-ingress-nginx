@@ -1,6 +1,7 @@
 package nginx
 
 import (
+	"log"
 	"os"
 	"path"
 
@@ -14,6 +15,10 @@ type Controller struct {
 	local            bool
 	nginxBinaryPath  string
 	configVersion    int
+}
+
+// MainConfig describe the main NGINX configuration file
+type MainConfig struct {
 }
 
 // Location describes an NGINX location
@@ -155,4 +160,21 @@ func (nginx *Controller) DeleteIngress(name string) {
 			glog.Warningf("Failed to delete %v: %v", filename, err)
 		}
 	}
+}
+
+// UpdateMainConfigFile writes the main NGINX configuration file to the filesystem
+func (nginx *Controller) UpdateMainConfigFile(cfg []byte) {
+	filename := "/etc/nginx/nginx.conf"
+	log.Printf("Writing NGINX conf to %v", filename)
+
+	w, err := os.Create(filename)
+	if err != nil {
+		log.Fatalf("Failed to open %v: %v", filename, err)
+	}
+	_, err = w.Write(cfg)
+	if err != nil {
+		log.Fatalf("Failed to write to %v: %v", filename, err)
+	}
+	defer w.Close()
+	log.Printf("The main NGINX config file has been updated")
 }
