@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	proxyURL = flag.String("proxy", "127.0.0.1:8001",
+	proxyURL = flag.String("proxy", "",
 		`Use a proxy server to connect to Kubernetes API started by "kubectl proxy" command. For testing purposes only.
 	The Ingress controller does not start NGINX and does not write any generated NGINX configuration files to disk`)
 
