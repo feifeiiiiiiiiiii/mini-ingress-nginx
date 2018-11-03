@@ -184,6 +184,22 @@ func upstreamMapToSlice(upstreams map[string]Upstream) []Upstream {
 	return result
 }
 
+// UpdateEndpoints updates endpoints in NGINX configuration for the Ingress resources
+func (cnf *NgxConfig) UpdateEndpoints(ingExes []*IngressEx) error {
+	for _, ingEx := range ingExes {
+		err := cnf.AddOrUpdateIngress(ingEx)
+		if err != nil {
+			return fmt.Errorf("Error adding or updating ingress %v/%v: %v", ingEx.Ingress.Namespace, ingEx.Ingress.Name, err)
+		}
+	}
+
+	if err := cnf.nginx.Reload(); err != nil {
+		return fmt.Errorf("Error reloading NGINX when updating endpoints: %v", err)
+	}
+
+	return nil
+}
+
 // HasIngress checks if the Ingress resource is present in NGINX configuration
 func (cnf *NgxConfig) HasIngress(ing *extensions.Ingress) bool {
 	name := objectMetaToFileName(&ing.ObjectMeta)

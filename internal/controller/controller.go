@@ -176,9 +176,24 @@ func (lbc *LoadBalancerController) syncIng(task queue.Task) {
 	}
 }
 
+func (lbc *LoadBalancerController) getIngressForEndpoints(obj interface{}) []extensions.Ingress {
+	var ings []extensions.Ingress
+	endp := obj.(*api_v1.Endpoints)
+	svcKey := endp.GetNamespace() + "/" + endp.GetName()
+	svcObj, svcExists, err := lbc.svcLister.GetByKey(svcKey)
+	if err != nil {
+		log.Printf("error getting service %v from the cache: %v\n", svcKey, err)
+	} else {
+		if svcExists {
+			ings = append(ings, lbc.getIngressesForService(svcObj.(*api_v1.Service))...)
+		}
+	}
+	return ings
+}
+
 func (lbc *LoadBalancerController) syncEndpoint(task queue.Task) {
 	key := task.Key
-	_, endpExists, err := lbc.endpointLister.GetByKey(key)
+	obj, endpExists, err := lbc.endpointLister.GetByKey(key)
 	if err != nil {
 		lbc.syncQueue.Requeue(task, err)
 		return
@@ -188,6 +203,32 @@ func (lbc *LoadBalancerController) syncEndpoint(task queue.Task) {
 		return
 	}
 
+	ings := lbc.getIngressForEndpoints(obj)
+
+	var ingExes []*nginx.IngressEx
+
+	for i := range ings {
+		if !lbc.IsNginxIngress(&ings[i]) {
+			continue
+		}
+		if !lbc.configurator.HasIngress(&ings[i]) {
+			continue
+		}
+		ingEx, err := lbc.createIngress(&ings[i])
+		if err != nil {
+			log.Printf("Error updating endpoints for %v/%v: %v, skipping", &ings[i].Namespace, &ings[i].Name, err)
+			continue
+		}
+		ingExes = append(ingExes, ingEx)
+	}
+
+	if len(ingExes) > 0 {
+		log.Printf("Updating Endpoints for %v", ingExes)
+		err = lbc.configurator.UpdateEndpoints(ingExes)
+		if err != nil {
+			glog.Errorf("Error updating endpoints for %v: %v", ingExes, err)
+		}
+	}
 }
 
 func (lbc *LoadBalancerController) createIngress(ing *extensions.Ingress) (*nginx.IngressEx, error) {
