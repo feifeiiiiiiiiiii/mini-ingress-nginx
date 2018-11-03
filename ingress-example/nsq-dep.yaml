@@ -1,0 +1,24 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: nsq
+    component: nsq-broker
+  name: nsq-broker
+  namespace: mini-nginx-ingress
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nsq
+        component: nsq-broker
+    spec:
+      containers:
+      - name: nsq
+        image: nsqio/nsq
+        ports:
+        - containerPort: 4150
+        - containerPort: 4151
+        command:
+        - /usr/local/bin/nsqd

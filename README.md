@@ -1,2 +1,11 @@
 # mini-ingress-nginx
-A simple ingress-nginx implements, let me to study k8s and ingress related  knowledge 
+A simple ingress-nginx implements, let me to study k8s and ingress related  knowledge, base `Nginx Inc kubernetes-ingress`
+
+```
+  _   _      _ _         __  __ _       _   ___                                 _   _       _
+ | | | | ___| | | ___   |  \/  (_)_ __ (_) |_ _|_ __   __ _ _ __ ___  ___ ___  | \ | | __ _(_)_ __ __  __
+ | |_| |/ _ \ | |/ _ \  | |\/| | | '_ \| |  | || '_ \ / _` | '__/ _ \/ __/ __| |  \| |/ _` | | '_ \\ \/ /
+ |  _  |  __/ | | (_) | | |  | | | | | | |  | || | | | (_| | | |  __/\__ \__ \ | |\  | (_| | | | | |>  <
+ |_| |_|\___|_|_|\___/  |_|  |_|_|_| |_|_| |___|_| |_|\__, |_|  \___||___/___/ |_| \_|\__, |_|_| |_/_/\_\
+                                                      |___/                           |___/
+```

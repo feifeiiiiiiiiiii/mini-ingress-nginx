@@ -1,0 +1,17 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: nsq-ingress
+  namespace: mini-nginx-ingress
+  annotations:
+    kubernetes.io/ingress.class: mini-ingress-nginx
+    nginx.org/rewrites: "serviceName=nsq rewrite=/"
+spec:
+  rules:
+  - host: nsq.proxy.com
+    http:
+      paths:
+      - path: /proxy/
+        backend:
+          serviceName: nsq
+          servicePort: 4151

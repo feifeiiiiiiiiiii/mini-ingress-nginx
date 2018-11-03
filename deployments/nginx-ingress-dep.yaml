@@ -1,0 +1,21 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: nginx-ingress
+  namespace: mini-nginx-ingress
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nginx-ingress
+    spec:
+      containers:
+      - name:  nginx-ingress
+        image: feifeiiiiiiiiiii/mini-nginx-ingress:edge
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 80
+        - name: https
+          containerPort: 443
