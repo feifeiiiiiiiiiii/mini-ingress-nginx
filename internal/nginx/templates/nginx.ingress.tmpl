@@ -24,4 +24,8 @@ server {
 
 		proxy_pass http://{{$location.Upstream.Name}}{{$location.Rewrite}};
 	}{{end}}
+
+	location = /nginx_stub_status {
+		stub_status;
+	}
 }{{end}}
